@@ -1,0 +1,12 @@
+name: TP_Test
+title: TP_Test
+username: boualem
+account: boualem
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13400033
+bundleId: 9392024
+url: https://boualem.shinyapps.io/TP_Test/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
