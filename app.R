@@ -2,6 +2,7 @@
 library(shiny)
 library(shinydashboard)
 library(dplyr)
+library(DT)
 
 # UI
 ui <- dashboardPage(
@@ -34,6 +35,12 @@ ui <- dashboardPage(
                 valueBoxOutput("missingBox", width = 3)
               ),
               fluidRow(
+                valueBoxOutput("searchBox", width = 12)
+              ),
+              fluidRow(
+                valueBoxOutput("imputationBox", width = 12)
+              ),
+              fluidRow(
                 box(title = "Imputation Options", status = "warning", solidHeader = TRUE, width = 12,
                     uiOutput("imputationUI"),
                     actionButton("impute", "Apply Imputation", class = "btn-primary")
@@ -43,6 +50,12 @@ ui <- dashboardPage(
                 box(title = "Download Imputed Dataset", status = "success", solidHeader = TRUE, width = 12,
                     downloadButton("downloadData", "Download Imputed Dataset")
                 )
+              ),
+              fluidRow(
+                box(title = "Dataset Preview", status = "info", solidHeader = TRUE, width = 12,
+                    DTOutput("dataPreview"),
+                    actionButton("showAll", "Show All", class = "btn-primary")
+                )
               )
       )
     )
@@ -51,9 +64,19 @@ ui <- dashboardPage(
 
 # Server
 server <- function(input, output, session) {
+  
   dataset <- reactive({
     req(input$file)
-    read.csv(input$file$datapath)
+    tryCatch({
+      read.csv(input$file$datapath)
+    }, error = function(e) {
+      showModal(modalDialog(
+        title = "Error",
+        "The file could not be read. Please make sure it is a valid CSV file.",
+        easyClose = TRUE
+      ))
+      NULL
+    })
   })
   
   missing_summary <- reactive({
@@ -123,7 +146,21 @@ server <- function(input, output, session) {
     cat("Missing Values:", sum(is.na(data)), "\n")
   })
   
-  # UI for selecting imputation methods
+  # Data loading and preview (first 5 rows initially)
+  output$dataPreview <- renderDT({
+    req(dataset())
+    head(dataset(), 5)  # Initially show first 5 rows
+  })
+  
+  # Show all dataset when "Show All" button is clicked
+  observeEvent(input$showAll, {
+    req(dataset())
+    output$dataPreview <- renderDT({
+      dataset()  # Show all rows when button is clicked
+    })
+  })
+  
+  # UI for imputation
   output$imputationUI <- renderUI({
     req(missing_summary())
     summary <- missing_summary()
@@ -146,10 +183,20 @@ server <- function(input, output, session) {
         }
       )
     })
-    do.call(tagList, impute_controls)
+    
+    custom_value_input <- lapply(seq_len(nrow(vars_with_missing)), function(i) {
+      var_name <- vars_with_missing$Variable[i]
+      textInput(
+        inputId = paste0("custom_", var_name),
+        label = paste("Custom Value for", var_name),
+        value = "",
+        placeholder = "Enter a custom value"
+      )
+    })
+    
+    tagList(impute_controls, custom_value_input)
   })
   
-  # Apply imputation
   observeEvent(input$impute, {
     req(dataset())
     data <- dataset()
@@ -171,6 +218,9 @@ server <- function(input, output, session) {
           data[[var_name]][is.na(data[[var_name]])] <- mean(data[[var_name]], na.rm = TRUE)
         } else if (impute_method == "Median") {
           data[[var_name]][is.na(data[[var_name]])] <- median(data[[var_name]], na.rm = TRUE)
+        } else if (impute_method == "Custom Value") {
+          custom_val <- input[[paste0("custom_", var_name)]]
+          data[[var_name]][is.na(data[[var_name]])] <- custom_val
         }
       }
     }
@@ -178,16 +228,16 @@ server <- function(input, output, session) {
     imputed_dataset(data)
   })
   
-  # Download imputed dataset
   output$downloadData <- downloadHandler(
     filename = function() {
       paste("imputed_dataset", Sys.Date(), ".csv", sep = "")
     },
     content = function(file) {
+      req(imputed_dataset())
       write.csv(imputed_dataset(), file, row.names = FALSE)
     }
   )
 }
 
-# Run the app
+# Run the application
 shinyApp(ui, server)

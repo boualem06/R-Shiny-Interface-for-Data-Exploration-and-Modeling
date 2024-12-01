@@ -1,0 +1,12 @@
+name: Projet
+title: Projet
+username: boualem
+account: boualem
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13465807
+bundleId: 9426310
+url: https://boualem.shinyapps.io/Projet/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
