@@ -68,7 +68,14 @@ server <- function(input, output, session) {
   dataset <- reactive({
     req(input$file)
     tryCatch({
-      read.csv(input$file$datapath)
+      data <- read.csv(input$file$datapath)
+      
+      # Force character columns to be factors if needed
+      #data <- data %>%
+        #mutate(across(where(is.character), as.factor))
+      
+      return(data)
+      
     }, error = function(e) {
       showModal(modalDialog(
         title = "Error",
@@ -79,17 +86,32 @@ server <- function(input, output, session) {
     })
   })
   
+
+  
   missing_summary <- reactive({
     req(dataset())
     data <- dataset()
-    missing_counts <- sapply(data, function(col) sum(is.na(col)))
-    data.frame(
-      Variable = names(missing_counts),
-      MissingValues = missing_counts,
+    
+    # Calculate missing values and determine variable types
+    missing_data <- data.frame(
+      Variable = names(data),
+      MissingValues = sapply(data, function(col) {
+        if (is.character(col) | is.factor(col)) {
+          sum(is.na(col) | nchar(as.character(col)) == 0)
+        } else {
+          sum(is.na(col))
+        }
+      }),
       Type = sapply(data, class),
       stringsAsFactors = FALSE
     )
+    
+    return(missing_data)
   })
+  
+  
+  
+  
   
   imputed_dataset <- reactiveVal(NULL)
   
@@ -111,7 +133,7 @@ server <- function(input, output, session) {
   
   output$categoricalBox <- renderValueBox({
     req(dataset())
-    num_categorical <- sum(sapply(dataset(), class) %in% c("factor", "character"))
+    num_categorical <- sum(sapply(dataset(), function(x) is.factor(x) || is.character(x)))
     valueBox(
       num_categorical, "Categorical Variables",
       icon = icon("tags"), color = "purple"
@@ -120,7 +142,7 @@ server <- function(input, output, session) {
   
   output$numericalBox <- renderValueBox({
     req(dataset())
-    num_numerical <- sum(sapply(dataset(), class) %in% c("integer", "numeric"))
+    num_numerical <- sum(sapply(dataset(), function(x) is.numeric(x) || is.integer(x)))
     valueBox(
       num_numerical, "Numerical Variables",
       icon = icon("chart-bar"), color = "orange"
@@ -177,7 +199,7 @@ server <- function(input, output, session) {
         inputId = paste0("impute_", var_name),
         label = paste("Imputation method for", var_name),
         choices = if (var_type %in% c("factor", "character")) {
-          c("Mode", "Replace with 'Unknown'")
+          c("Custom Value", "Replace with 'Unknown'")
         } else {
           c("Mean", "Median", "Custom Value")
         }
