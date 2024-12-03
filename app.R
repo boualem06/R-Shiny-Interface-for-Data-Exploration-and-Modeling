@@ -3,13 +3,18 @@ library(shiny)
 library(shinydashboard)
 library(dplyr)
 library(DT)
+library(ggplot2)
+
+#install.packages("ggplot2")
 
 # UI
 ui <- dashboardPage(
   dashboardHeader(title = "Dataset Overview"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Upload Dataset", tabName = "upload", icon = icon("upload"))
+      menuItem("Upload Dataset", tabName = "upload", icon = icon("upload")),
+      menuItem("Visualisation", tabName = "visualisation", icon = icon("chart-bar")) # New Visualisation menu
+      
     )
   ),
   dashboardBody(
@@ -57,7 +62,28 @@ ui <- dashboardPage(
                     actionButton("showAll", "Show All", class = "btn-primary")
                 )
               )
+      ),
+      tabItem(tabName = "visualisation", # New tab for visualizations
+              fluidRow(
+                box(title = "Visualisation Options", status = "primary", solidHeader = TRUE, width = 12,
+                    selectInput("var_x", "X-axis Variable:", choices = NULL),
+                    selectInput("var_y", "Y-axis Variable:", choices = NULL),
+                    selectInput("plot_type", "Select Plot Type:", 
+                                choices = c("Scatter Plot" = "scatter", 
+                                            "Bar Plot" = "bar", 
+                                            "Histogram" = "hist")),
+                    actionButton("generate_plot", "Generate Plot", class = "btn-success")
+                )
+              ),
+              fluidRow(
+                box(title = "Plot Output", status = "info", solidHeader = TRUE, width = 12,
+                    plotOutput("plot")
+                )
+              )
       )
+      
+      
+      
     )
   )
 )
@@ -85,6 +111,43 @@ server <- function(input, output, session) {
       NULL
     })
   })
+#======================================================================================================
+  
+  # Populate X and Y dropdowns based on dataset
+  observe({
+    req(dataset())
+    data <- dataset()
+    updateSelectInput(session, "var_x", choices = names(data))
+    updateSelectInput(session, "var_y", choices = names(data))
+  })
+  
+  # Generate plot based on user inputs
+  output$plot <- renderPlot({
+    req(dataset(), input$var_x, input$plot_type)
+    data <- dataset()
+    
+    plot_type <- input$plot_type
+    var_x <- input$var_x
+    var_y <- input$var_y
+    
+    if (plot_type == "scatter") {
+      req(input$var_y) # Y-axis is required for scatter plot
+      ggplot(data, aes_string(x = var_x, y = var_y)) +
+        geom_point() +
+        theme_minimal()
+    } else if (plot_type == "bar") {
+      ggplot(data, aes_string(x = var_x)) +
+        geom_bar() +
+        theme_minimal()
+    } else if (plot_type == "hist") {
+      ggplot(data, aes_string(x = var_x)) +
+        geom_histogram(binwidth = 30, fill = "blue", color = "white") +
+        theme_minimal()
+    }
+  })
+  
+  
+  #====================================================================================================
   
 
   
