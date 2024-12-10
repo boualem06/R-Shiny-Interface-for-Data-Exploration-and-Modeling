@@ -231,15 +231,6 @@ ui <- dashboardPage(
     
       
       
-      
-      
-      
-      
-      
-      
-      
-      
-      
     )
   )
 )
@@ -345,7 +336,9 @@ server <- function(input, output, session) {
   # Populate X and Y dropdowns based on dataset
   observe({
     req(dataset())
-    data <- dataset()
+    #data <- dataset()
+    data<-get_current_dataset()
+    
     updateSelectInput(session, "var_x", choices = names(data))
     updateSelectInput(session, "var_y", choices = names(data))
   })
@@ -380,15 +373,19 @@ server <- function(input, output, session) {
   
   # Data loading and preview (first 5 rows initially)
   output$dataPreview <- renderDT({
-    req(dataset())
-    head(dataset(), 5)  # Initially show first 5 rows
+    #req(dataset())
+    req(get_current_dataset())
+    #head(dataset(), 5)  # Initially show first 5 rows
+    head(get_current_dataset(), 5)
+    
   })
   
   # Show all dataset when "Show All" button is clicked
   observeEvent(input$showAll, {
     req(dataset())
     output$dataPreview <- renderDT({
-      dataset()  # Show all rows when button is clicked
+      #dataset()  # Show all rows when button is clicked
+      get_current_dataset()
     })
   })
   
@@ -398,8 +395,8 @@ server <- function(input, output, session) {
   
   summary_data <- reactive({
     req(dataset())
-    data <- dataset()
-    
+    #data <- dataset()
+    data<-get_current_dataset()
     summary_df <- data.frame(
       Column = names(data),
       Type = sapply(data, class),
@@ -635,6 +632,7 @@ server <- function(input, output, session) {
       # One-Hot Encoding
       for (col in cols_to_encode) {
         dummy_cols <- model.matrix(~. - 1, data.frame(data[[col]]))
+        #dummy_cols <- as.data.frame(model.matrix(~. - 1, data.frame(data[[col]])))
         colnames(dummy_cols) <- paste0(col, "_", colnames(dummy_cols))
         data[[col]] <- NULL
         data <- cbind(data, dummy_cols)
