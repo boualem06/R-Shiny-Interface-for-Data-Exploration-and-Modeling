@@ -393,12 +393,7 @@ server <- function(input, output, session) {
   })
   
   
-  #=========================Data imputation section =====================================
-  
- 
-  
-  
-  
+
  # ===========================code of the data Summary ================================================
   
   summary_data <- reactive({
@@ -432,6 +427,7 @@ server <- function(input, output, session) {
   })
   
   #===================================Data preprocessing =========================================================================
+  
   # Populate columns for normalization, outlier treatment, and encoding
   observe({
     req(dataset())
@@ -476,15 +472,10 @@ server <- function(input, output, session) {
   #=========================================================================================imputation ========================
   
   
-  
-  
-  
-  
-  
   missing_summary <- reactive({
     req(dataset())
-    data <- dataset()
-    
+    #data <- dataset()
+    data<- get_current_dataset()
     # Calculate missing values and determine variable types
     missing_data <- data.frame(
       Variable = names(data),
@@ -575,9 +566,6 @@ server <- function(input, output, session) {
   
   #======================================================================================================
   
-  
-  
-  
   # Normalization Logic
   observeEvent(input$apply_normalization, {
     # Use the current working dataset or original if no previous preprocessing
@@ -603,6 +591,8 @@ server <- function(input, output, session) {
     # Store the normalized data
     preprocessed_data$normalized <- normalized_data
   })
+  
+  #=============================================================================================
   
   # Outlier Treatment Logic
   observeEvent(input$apply_outlier_treatment, {
@@ -634,6 +624,7 @@ server <- function(input, output, session) {
     preprocessed_data$outlier_treated <- data
   })
   
+  #============================================================================================
   # Categorical Encoding Logic
   observeEvent(input$apply_encoding, {
     # Use the current working dataset or original if no previous preprocessing
@@ -659,6 +650,7 @@ server <- function(input, output, session) {
     preprocessed_data$encoded <- data
   })
   
+  #===================================================================================================
   # Preprocessed Data Preview
   output$preprocessed_data_preview <- renderDT({
     # Show the most recently preprocessed data
@@ -679,12 +671,6 @@ server <- function(input, output, session) {
     }
   )
   
-  
-  
-  
-  
-  
-
   
   }
 
