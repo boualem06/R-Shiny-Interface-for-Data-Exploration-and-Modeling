@@ -16,7 +16,7 @@ ui <- dashboardPage(
       menuItem("Upload Dataset", tabName = "upload", icon = icon("upload")),
       menuItem("Dataset Show", tabName = "dataset_show", icon = icon("table")),
       menuItem("Dataset Preview", tabName = "dataset_preview", icon = icon("search")),
-      menuItem("Impute", tabName = "impute", icon = icon("calculator")),
+      # menuItem("Impute", tabName = "impute", icon = icon("calculator")),
       menuItem("Visualisation", tabName = "visualisation", icon = icon("chart-bar")), # New Visualisation menu
       menuItem("Preprocessing", tabName = "preprocessing", icon = icon("filter"))
       
@@ -67,21 +67,21 @@ ui <- dashboardPage(
               ),
          ),
       
-      tabItem(tabName = "impute",
+      #tabItem(tabName = "impute",
               #h3("Impute Section"),
               
-              fluidRow(
-                box(title = "Imputation Options", status = "warning", solidHeader = TRUE, width = 12,
-                    uiOutput("imputationUI"),
-                    actionButton("impute", "Apply Imputation", class = "btn-primary")
-                )
-              ),
-              fluidRow(
-                box(title = "Download Imputed Dataset", status = "success", solidHeader = TRUE, width = 12,
-                    downloadButton("downloadData", "Download Imputed Dataset")
-                )
-              ),
-      ),
+       #      fluidRow(
+        #        box(title = "Imputation Options", status = "warning", solidHeader = TRUE, width = 12,
+         #           uiOutput("imputationUI"),
+          #          actionButton("impute", "Apply Imputation", class = "btn-primary")
+           #     )
+            #  ),
+             # fluidRow(
+              #  box(title = "Download Imputed Dataset", status = "success", solidHeader = TRUE, width = 12,
+               #     downloadButton("downloadData", "Download Imputed Dataset")
+                #)
+              #),
+      #),
       
       tabItem(tabName = "dataset_show",
               
@@ -134,6 +134,20 @@ ui <- dashboardPage(
       #=========================================page for  data processing ==========================================
       tabItem(tabName = "preprocessing",
               h3("Data Preprocessing"),
+              
+              fluidRow(
+                box(title = "Imputation Options", status = "warning", solidHeader = TRUE, width = 12,
+                    uiOutput("imputationUI"),
+                    actionButton("impute", "Apply Imputation", class = "btn-primary")
+                )
+              ),
+              #fluidRow(
+              #  box(title = "Download Imputed Dataset", status = "success", solidHeader = TRUE, width = 12,
+               #     downloadButton("downloadData", "Download Imputed Dataset")
+              #  )
+              #),
+              
+              
               fluidRow(
                 # Normalization Box
                 box(
@@ -381,6 +395,91 @@ server <- function(input, output, session) {
   
   #=========================Data imputation section =====================================
   
+ 
+  
+  
+  
+ # ===========================code of the data Summary ================================================
+  
+  summary_data <- reactive({
+    req(dataset())
+    data <- dataset()
+    
+    summary_df <- data.frame(
+      Column = names(data),
+      Type = sapply(data, class),
+      Min = sapply(data, function(col) if (is.numeric(col)) min(col, na.rm = TRUE) else NA),
+      Max = sapply(data, function(col) if (is.numeric(col)) max(col, na.rm = TRUE) else NA),
+      Median = sapply(data, function(col) if (is.numeric(col)) median(col, na.rm = TRUE) else NA),
+      StdDev = sapply(data, function(col) if (is.numeric(col)) sd(col, na.rm = TRUE) else NA),
+      Variance = sapply(data, function(col) if (is.numeric(col)) var(col, na.rm = TRUE) else NA),
+      UniqueValues = sapply(data, function(col) length(unique(col))),
+      MissingValues = sapply(data, function(col) sum(is.na(col))),
+      stringsAsFactors = FALSE
+    )
+    
+    return(summary_df)
+  })
+  output$summaryTable <- renderDT({
+    req(summary_data())
+    datatable(
+      summary_data(),
+      options = list(
+        scrollX = TRUE,
+        pageLength = 10
+      )
+    )
+  })
+  
+  #===================================Data preprocessing =========================================================================
+  # Populate columns for normalization, outlier treatment, and encoding
+  observe({
+    req(dataset())
+    data <- dataset()
+    
+    # Populate normalization columns (only numeric columns)
+    numeric_cols <- names(data)[sapply(data, is.numeric)]
+    updateSelectInput(session, "normalization_columns", 
+                      choices = numeric_cols)
+    
+    # Populate outlier treatment columns (only numeric columns)
+    updateSelectInput(session, "outlier_columns", 
+                      choices = numeric_cols)
+    
+    # Populate encoding columns (categorical and character columns)
+    categorical_cols <- names(data)[sapply(data, function(x) is.factor(x) || is.character(x))]
+    updateSelectInput(session, "encoding_columns", 
+                      choices = categorical_cols)
+  })
+  
+  
+  # Create a reactive values object to store different preprocessing stages
+  preprocessed_data <- reactiveValues(
+    original = NULL,     # Original dataset
+    imputed = NULL,      # After imputation
+    normalized = NULL,   # After normalization
+    outlier_treated = NULL,  # After outlier treatment
+    encoded = NULL       # Final preprocessed dataset after encoding
+  )
+  
+  # Function to get the current working dataset
+  get_current_dataset <- reactive({
+    # Prioritize the most recently preprocessed dataset
+    if (!is.null(preprocessed_data$encoded)) return(preprocessed_data$encoded)
+    if (!is.null(preprocessed_data$outlier_treated)) return(preprocessed_data$outlier_treated)
+    if (!is.null(preprocessed_data$normalized)) return(preprocessed_data$normalized)
+    if (!is.null(preprocessed_data$imputed)) return(preprocessed_data$imputed)
+    return(dataset())
+  })
+  
+  # Inside the server function, add this reactive function
+  #=========================================================================================imputation ========================
+  
+  
+  
+  
+  
+  
   
   missing_summary <- reactive({
     req(dataset())
@@ -471,81 +570,18 @@ server <- function(input, output, session) {
       }
     }
     
-    imputed_dataset(data)
+    preprocessed_data$imputed <- data
   })
   
-  output$downloadData <- downloadHandler(
-    filename = function() {
-      paste("imputed_dataset", Sys.Date(), ".csv", sep = "")
-    },
-    content = function(file) {
-      req(imputed_dataset())
-      write.csv(imputed_dataset(), file, row.names = FALSE)
-    }
-  )
+  #======================================================================================================
   
   
   
- # ===========================code of the data Summary ================================================
-  
-  summary_data <- reactive({
-    req(dataset())
-    data <- dataset()
-    
-    summary_df <- data.frame(
-      Column = names(data),
-      Type = sapply(data, class),
-      Min = sapply(data, function(col) if (is.numeric(col)) min(col, na.rm = TRUE) else NA),
-      Max = sapply(data, function(col) if (is.numeric(col)) max(col, na.rm = TRUE) else NA),
-      Median = sapply(data, function(col) if (is.numeric(col)) median(col, na.rm = TRUE) else NA),
-      StdDev = sapply(data, function(col) if (is.numeric(col)) sd(col, na.rm = TRUE) else NA),
-      Variance = sapply(data, function(col) if (is.numeric(col)) var(col, na.rm = TRUE) else NA),
-      UniqueValues = sapply(data, function(col) length(unique(col))),
-      MissingValues = sapply(data, function(col) sum(is.na(col))),
-      stringsAsFactors = FALSE
-    )
-    
-    return(summary_df)
-  })
-  output$summaryTable <- renderDT({
-    req(summary_data())
-    datatable(
-      summary_data(),
-      options = list(
-        scrollX = TRUE,
-        pageLength = 10
-      )
-    )
-  })
-  
-  #===================================Data preprocessing =========================================================================
-  observe({
-    req(dataset())
-    data <- dataset()
-    
-    # Update normalization column choices
-    updateSelectInput(session, "normalization_columns", 
-                      choices = names(data)[sapply(data, is.numeric)]
-    )
-    
-    # Update outlier treatment column choices
-    updateSelectInput(session, "outlier_columns", 
-                      choices = names(data)[sapply(data, is.numeric)]
-    )
-    
-    # Update encoding column choices
-    updateSelectInput(session, "encoding_columns", 
-                      choices = names(data)[sapply(data, function(x) is.factor(x) || is.character(x))]
-    )
-  })
-  
-  # Preprocessed data storage
-  preprocessed_data <- reactiveVal(NULL)
   
   # Normalization Logic
   observeEvent(input$apply_normalization, {
-    req(dataset(), input$normalization_columns)
-    data <- dataset()
+    # Use the current working dataset or original if no previous preprocessing
+    data <- get_current_dataset()
     cols_to_normalize <- input$normalization_columns
     
     normalized_data <- data
@@ -564,13 +600,14 @@ server <- function(input, output, session) {
       })
     }
     
-    preprocessed_data(normalized_data)
+    # Store the normalized data
+    preprocessed_data$normalized <- normalized_data
   })
   
   # Outlier Treatment Logic
   observeEvent(input$apply_outlier_treatment, {
-    req(dataset(), input$outlier_columns)
-    data <- dataset()
+    # Use the current working dataset or original if no previous preprocessing
+    data <- get_current_dataset()
     cols_to_treat <- input$outlier_columns
     threshold <- input$outlier_threshold
     
@@ -593,13 +630,14 @@ server <- function(input, output, session) {
       }
     }
     
-    preprocessed_data(data)
+    # Store the outlier-treated data
+    preprocessed_data$outlier_treated <- data
   })
   
   # Categorical Encoding Logic
   observeEvent(input$apply_encoding, {
-    req(dataset(), input$encoding_columns)
-    data <- dataset()
+    # Use the current working dataset or original if no previous preprocessing
+    data <- get_current_dataset()
     cols_to_encode <- input$encoding_columns
     
     if (input$encoding_method == "onehot") {
@@ -617,13 +655,15 @@ server <- function(input, output, session) {
       }
     }
     
-    preprocessed_data(data)
+    # Store the final encoded data
+    preprocessed_data$encoded <- data
   })
   
   # Preprocessed Data Preview
   output$preprocessed_data_preview <- renderDT({
-    req(preprocessed_data())
-    datatable(preprocessed_data(), 
+    # Show the most recently preprocessed data
+    req(get_current_dataset())
+    datatable(get_current_dataset(), 
               options = list(scrollX = TRUE, pageLength = 10)
     )
   })
@@ -634,10 +674,11 @@ server <- function(input, output, session) {
       paste("preprocessed_dataset_", Sys.Date(), ".csv", sep = "")
     },
     content = function(file) {
-      req(preprocessed_data())
-      write.csv(preprocessed_data(), file, row.names = FALSE)
+      req(get_current_dataset())
+      write.csv(get_current_dataset(), file, row.names = FALSE)
     }
   )
+  
   
   
   
