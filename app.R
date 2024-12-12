@@ -4,6 +4,14 @@ library(shinydashboard)
 library(dplyr)
 library(DT)
 library(ggplot2)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(e1071)
+library(glmnet)
+library(corrplot)
+library(GGally)
 
 #install.packages("ggplot2")
 
@@ -18,9 +26,11 @@ ui <- dashboardPage(
       menuItem("Dataset Preview", tabName = "dataset_preview", icon = icon("search")),
       # menuItem("Impute", tabName = "impute", icon = icon("calculator")),
       menuItem("Visualisation", tabName = "visualisation", icon = icon("chart-bar")), # New Visualisation menu
-      menuItem("Preprocessing", tabName = "preprocessing", icon = icon("filter"))
-      
-      
+      menuItem("Correlation Analysis", tabName = "correlation", icon = icon("chart-line")),
+      menuItem("Preprocessing", tabName = "preprocessing", icon = icon("filter")),
+      menuItem("Model Selection", tabName = "model", icon = icon("chart-bar")),
+      menuItem("Model Training", tabName = "train", icon = icon("cogs")),
+      menuItem("Model Visualization", tabName = "viz", icon = icon("eye"))
       
       
     )
@@ -226,10 +236,88 @@ ui <- dashboardPage(
                   downloadButton("download_preprocessed_data", "Download Preprocessed Data")
                 )
               )
-      )
-    
-    
+      ),
       
+      #================================= Model selection ======================================================
+      # Model Selection Tab
+      tabItem(tabName = "model",
+              fluidRow(
+                box(
+                  title = "Select Model", status = "primary", solidHeader = TRUE,
+                  selectInput("model_type", "Choose Model:",
+                              choices = c(
+                                "Random Forest" = "rf",
+                                "Support Vector Machine" = "svm",
+                                "Logistic Regression" = "glm"
+                              )
+                  )
+                ),
+                box(
+                  title = "Model Parameters", status = "warning", solidHeader = TRUE,
+                  uiOutput("model_params")
+                )
+              )
+      ),
+    
+      # ========================================= Model training ========================================================
+      # Model Training Tab
+      tabItem(tabName = "train",
+              fluidRow(
+                box(
+                  title = "Training Setup", status = "primary", solidHeader = TRUE,
+                  selectInput("target_var", "Select Target Variable:", choices = NULL),
+                  selectInput("train_vars", "Select Predictor Variables:", 
+                              choices = NULL, multiple = TRUE),
+                  sliderInput("train_ratio", "Training Data Ratio", 
+                              min = 0.5, max = 0.9, value = 0.7, step = 0.05)
+                ),
+                box(
+                  title = "Training Results", status = "warning", solidHeader = TRUE,
+                  verbatimTextOutput("model_results")
+                )
+              )
+      ),
+      #=============================================Model viusalization===================================================================
+      # Model Visualization Tab
+      tabItem(tabName = "viz",
+              fluidRow(
+                box(
+                  title = "Model Visualization", status = "primary", solidHeader = TRUE,
+                  plotOutput("model_plot")
+                )
+              )
+      ),
+      
+      #=====================================================Correlation analysis=============================================================================
+      # New Correlation Analysis Tab
+      tabItem(tabName = "correlation",
+              fluidRow(
+                box(
+                  title = "Correlation Heatmap", status = "primary", solidHeader = TRUE,
+                  plotOutput("correlation_heatmap")
+                ),
+                box(
+                  title = "Correlation Matrix Controls", status = "warning", solidHeader = TRUE,
+                  selectInput("corr_method", "Correlation Method", 
+                              choices = c("Pearson" = "pearson", 
+                                          "Spearman" = "spearman", 
+                                          "Kendall" = "kendall")),
+                  selectInput("corr_plot_type", "Visualization Type", 
+                              choices = c("Circle" = "circle", 
+                                          "Pie" = "pie", 
+                                          "Square" = "square", 
+                                          "Heatmap" = "color", 
+                                          "Mixed" = "mixed"))
+                )
+              ),
+              fluidRow(
+                box(
+                  title = "Scatter Plot Matrix", status = "primary", solidHeader = TRUE,
+                  plotOutput("scatter_matrix")
+                )
+              )
+      )
+      # =================================================================================================
       
     )
   )
@@ -237,6 +325,13 @@ ui <- dashboardPage(
 
 # Server
 server <- function(input, output, session) {
+  
+  # Reactive data storage
+  data <- reactiveVal(NULL)
+  
+  # Reactive model storage
+  trained_model <- reactiveVal(NULL)
+  training_data <- reactiveVal(NULL)
 
   #================================ buttons for the navigations in the ulpoad page ========
   
@@ -263,6 +358,22 @@ server <- function(input, output, session) {
       # Force character columns to be factors if needed
       #data <- data %>%
       #mutate(across(where(is.character), as.factor))
+      
+      # Set default target as the last column
+      default_target <- names(data)[ncol(data)] # Last column name
+      
+      # Update variable selection inputs
+      updateSelectInput(session, "target_var", 
+                        choices = names(data), 
+                        selected = default_target
+      ) 
+      
+      updateSelectInput(session, "train_vars", 
+                        choices = names(data), 
+                        selected=head(names(data), -1)
+                        
+                        #selected =NULL
+      )
       
       return(data)
       
@@ -668,6 +779,290 @@ server <- function(input, output, session) {
       write.csv(get_current_dataset(), file, row.names = FALSE)
     }
   )
+  
+  #===============================================================Model Params selection ===========================
+  # Dynamic Model Parameters UI
+  output$model_params <- renderUI({
+    tryCatch({
+      req(input$model_type)
+    }, error = function(e) {
+      cat("Error: ", e$message, "\n")
+    })
+    
+    
+    tryCatch({
+      switch(input$model_type,
+             
+             "rf" = {
+               tagList(
+                 numericInput("rf_ntree", "Number of Trees", value = 500, min = 10),
+               )
+             },
+             "svm" = {
+               tagList(
+                 selectInput("svm_kernel", "Kernel Type", 
+                             choices = c("linear", "polynomial", "radial")),
+                 numericInput("svm_cost", "Cost", value = 1, min = 0.01)
+               )
+             },
+             "glm" = {
+               # No additional parameters for logistic regression
+               tags$p("No additional parameters required")
+             }
+      )
+    }, error = function(e) {
+      cat("Error in the selecting model : ", e$message, "\n")
+    })
+    
+    
+  })
+  
+  # ==========================================Model training======================================================
+  
+  # Model Training
+  output$model_results <- renderPrint({
+    tryCatch({
+      req(get_current_dataset(), input$target_var, input$train_vars)
+    }, error = function(e) {
+      cat("Error: ", e$message, "\n")
+    })
+    
+    tryCatch({
+      df <- get_current_dataset()
+      target <- df[[input$target_var]]
+      predictors <- df[, input$train_vars, drop = FALSE]
+    }, error = function(e) {
+      cat("Error: ", e$message, "\n")
+    })
+    
+    # Prepare data
+    
+    tryCatch({
+      set.seed(123)
+      train_index <- createDataPartition(target, p = input$train_ratio, list = FALSE)
+      x_train <- predictors[train_index, ]
+      x_test <- predictors[-train_index, ]
+      y_train <- target[train_index]
+      y_test <- target[-train_index]
+    }, error = function(e) {
+      cat("Error: ", e$message, "\n")
+    })
+    
+    tryCatch({
+      model <- switch(input$model_type,
+                      
+                      "rf" = {
+                        randomForest(
+                          x = x_train,
+                          y = y_train,
+                          ntree = input$rf_ntree,
+                        )
+                      },
+                      "svm" = {
+                        svm(
+                          x = x_train,
+                          #y = as.factor(y_train),
+                          y = y_train,
+                          kernel = input$svm_kernel,
+                          cost = input$svm_cost
+                        )
+                      },
+                      "glm" = {
+                        tryCatch({
+                          dtt<-data.frame(x_train, target = y_train)
+                          colnames(dtt)[ncol(dtt)] <- input$target_var 
+                          if(ncol(dtt)==2) colnames(dtt)[1] <- input$train_vars 
+                          glm(
+                            
+                            formula <- as.formula(paste(input$target_var,"~", paste(input$train_vars, collapse = " + "))),
+                            
+                            # formula = as.formula(paste(input$target_var, "~ .")),
+                            #data = data.frame(x_train, target = y_train),
+                            data<-dtt,
+                            family = binomial
+                            # ifelse(length(unique(y_train)) <= 2, binomial(), gaussian())
+                          )
+                        },error = function(e) {
+                          cat("Error in the gml function : ", e$message, "\n")
+                        })
+                        
+                      }
+      )
+    }, error = function(e) {
+      cat("Error in the model training: ", e$message, "\n")
+    })
+    # Train model
+    
+    tryCatch({
+      # Check if model training was successful
+      if (is.null(model)) {
+        stop("Model training failed. Please check your data and model parameters.")
+      }
+      
+      
+      # Save trained model
+      trained_model(model)
+      #try({
+      # if(ncol(x_test) == 1) colnames(x_test)[1] <- input$train_vars
+      
+      #}, error = function(e) {
+      #cat("Error in the saving m*******************odel : ", e$message, "\n")
+      #})
+      # Predict and evaluate
+      
+      predictions <- predict(model, x_test)
+      predicted_classes <- ifelse(predictions > 0.5, 1, 0)
+      
+      
+      # Evaluate the model
+      confusion_matrix <- table(Predicted = predicted_classes, Actual = y_test)
+      cat("Confusion Matrix: \n")
+      print(confusion_matrix)
+      
+      # Calculate accuracy
+      accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+      cat("Accuracy:", accuracy, "\n")
+      
+      
+      cat("Model: ", input$model_type, "\n")
+      print(postResample(predicted_classes, y_test))
+      
+    }, error = function(e) {
+      cat("Error in the saving model : ", e$message, "\n")
+    })
+    
+  })
+  # =============================================Model visualization=================================================================
+  # adding viusalizations 
+  
+  output$model_plot <- renderPlot({
+    req(trained_model(), get_current_dataset(), input$target_var, input$train_vars)
+    
+    # For 2D visualization, select first two predictor variables
+    if(length(input$train_vars) < 2) {
+      return(NULL)
+    }
+    
+    df <- get_current_dataset()
+    x_vars <- input$train_vars[1:2]
+    target_var <- input$target_var
+    
+    # Prepare data
+    x <- df[, x_vars]
+    y <- df[[target_var]]
+    
+    # Create visualization based on model type
+    if(input$model_type == "glm") {
+      # Logistic Regression Decision Boundary
+      plot(x[,1], x[,2], col = ifelse(y == 1, "blue", "red"), 
+           pch = 19, xlab = x_vars[1], ylab = x_vars[2], 
+           main = "Logistic Regression Decision Boundary")
+      
+      # Plot decision boundary
+      model <- trained_model()
+      
+      # Create a grid of points
+      x1_range <- seq(min(x[,1]), max(x[,1]), length.out = 100)
+      x2_range <- seq(min(x[,2]), max(x[,2]), length.out = 100)
+      grid <- expand.grid(x1_range, x2_range)
+      colnames(grid) <- x_vars
+      
+      # Predict probabilities for the grid
+      grid_pred <- predict(model, newdata = grid, type = "response")
+      
+      # Contour plot for decision boundary
+      contour(x1_range, x2_range, matrix(grid_pred, 100, 100), 
+              levels = 0.5, add = TRUE, col = "green", lwd = 2)
+      
+      legend("topright", legend = c("Class 0", "Class 1", "Decision Boundary"), 
+             col = c("red", "blue", "green"), pch = c(19, 19, NA), 
+             lty = c(NA, NA, 1))
+    }
+    else if(input$model_type == "svm") {
+      # SVM Decision Boundary
+      
+      # Fit SVM with current parameters
+      svm_model <- trained_model()
+      
+      # Create a grid of points
+      x1_range <- seq(min(x[,1]), max(x[,1]), length.out = 100)
+      x2_range <- seq(min(x[,2]), max(x[,2]), length.out = 100)
+      grid <- expand.grid(x1_range, x2_range)
+      colnames(grid) <- x_vars
+      
+      # Predict classes for the grid
+      grid_pred <- predict(svm_model, newdata = grid)
+      
+      # Plot the data points
+      plot(x[,1], x[,2], col = ifelse(y == 1, "blue", "red"), 
+           pch = 19, xlab = x_vars[1], ylab = x_vars[2], 
+           main = "SVM Decision Boundary")
+      
+      # Create a contour plot of the decision boundary
+      contour(x1_range, x2_range, matrix(as.numeric(grid_pred), 100, 100), 
+              levels = 0.5, add = TRUE, col = "green", lwd = 2)
+      
+      legend("topright", legend = c("Class 0", "Class 1", "Decision Boundary"), 
+             col = c("red", "blue", "green"), pch = c(19, 19, NA), 
+             lty = c(NA, NA, 1))
+    }
+  })
+  
+  # ======================================= Correlation visualisation =========================================================
+  # Correlation Visualization
+  output$correlation_heatmap <- renderPlot({
+    req(get_current_dataset())
+    
+    # Prepare data for correlation
+    dt <- get_current_dataset()
+    
+    # Select only numeric columns
+    numeric_cols <- sapply(dt, is.numeric)
+    if(sum(numeric_cols) < 2) {
+      plot(0, type = 'n', axes = FALSE, xlab = "", ylab = "")
+      text(0, 0, "Not enough numeric variables for correlation", col = "red")
+      return()
+    }
+    
+    # Compute correlation matrix
+    cor_matrix <- cor(dt[, numeric_cols], method = input$corr_method)
+    
+    # Correlation plot using corrplot
+    corrplot(cor_matrix, 
+             method = input$corr_plot_type, 
+             type = "full", 
+             tl.col = "black", 
+             tl.srt = 45, 
+             diag = TRUE
+             #title = paste("Correlation Heatmap (", 
+             #             input$corr_method, " method)")
+    )
+  })
+  
+  # Scatter Plot Matrix
+  output$scatter_matrix <- renderPlot({
+    req(get_current_dataset())
+    
+    # Prepare data for scatter matrix
+    dt <- get_current_dataset()
+    
+    # Select only numeric columns
+    numeric_cols <- sapply(dt, is.numeric)
+    if(sum(numeric_cols) < 2) {
+      plot(0, type = 'n', axes = FALSE, xlab = "", ylab = "")
+      text(0, 0, "Not enough numeric variables for scatter matrix", col = "red")
+      return()
+    }
+    
+    # Scatter plot matrix using GGally
+    ggpairs(dt[, numeric_cols], 
+            title = "Scatter Plot Matrix of Numeric Variables",
+            lower = list(continuous = "points"),
+            diag = list(continuous = "blankDiag"),
+            upper = list(continuous = "cor")) +
+      theme_bw()
+  })
+  #===========================================================================================================================
   
   
   }
