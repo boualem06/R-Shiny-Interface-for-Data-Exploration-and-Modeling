@@ -1,0 +1,13 @@
+name: WEB1
+title: WEB1
+username: boualem
+account: boualem
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13584460
+bundleId: 9508705
+url: https://boualem.shinyapps.io/WEB1/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData|data.csv
