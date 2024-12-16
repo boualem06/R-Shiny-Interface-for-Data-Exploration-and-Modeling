@@ -1,0 +1,12 @@
+name: final_version
+title: final_version
+username: boualem
+account: boualem
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13605711
+bundleId: 9528062
+url: https://boualem.shinyapps.io/final_version/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

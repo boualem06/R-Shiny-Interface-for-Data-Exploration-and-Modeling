@@ -430,9 +430,14 @@ server <- function(input, output, session) {
   
   output$missingBox <- renderValueBox({
     req(dataset())
-    num_missing <- sum(is.na(dataset()))
+    missing_values_count <- sapply(dataset(), function(x) sum(is.na(x) | x == ""))
+    
+    # Calculate the total number of missing values
+    total_missing_values <- sum(missing_values_count)
+    
+    #num_missing <- sum(is.na(dataset()))
     valueBox(
-      num_missing, "Missing Values",
+      total_missing_values, "Missing Values",
       icon = icon("exclamation-circle"), color = "red"
     )
   })
@@ -555,7 +560,8 @@ server <- function(input, output, session) {
       StdDev = sapply(data, function(col) if (is.numeric(col)) sd(col, na.rm = TRUE) else NA),
       Variance = sapply(data, function(col) if (is.numeric(col)) var(col, na.rm = TRUE) else NA),
       UniqueValues = sapply(data, function(col) length(unique(col))),
-      MissingValues = sapply(data, function(col) sum(is.na(col))),
+      MissingValues = sapply(data, function(col) sum(is.na(col) | col=="")),
+      # sapply(data, function(x) sum(is.na(x) | x == ""))
       stringsAsFactors = FALSE
     )
     
@@ -619,19 +625,20 @@ server <- function(input, output, session) {
   
   
   missing_summary <- reactive({
-    req(dataset())
+    req(get_current_dataset())
     #data <- dataset()
     data<- get_current_dataset()
     # Calculate missing values and determine variable types
     missing_data <- data.frame(
       Variable = names(data),
-      MissingValues = sapply(data, function(col) {
-        if (is.character(col) | is.factor(col)) {
-          sum(is.na(col) | nchar(as.character(col)) == 0)
-        } else {
-          sum(is.na(col))
-        }
-      }),
+      # MissingValues = sapply(data, function(col) {
+      #   if (is.character(col) | is.factor(col)) {
+      #     sum(is.na(col) | nchar(as.character(col)) == 0)
+      #   } else {
+      #     sum(is.na(col))
+      #   }
+      # }),
+      MissingValues=sapply(data, function(x) sum(is.na(x) | x == "")),
       Type = sapply(data, class),
       stringsAsFactors = FALSE
     )
@@ -666,6 +673,7 @@ server <- function(input, output, session) {
       )
     })
     
+    
     custom_value_input <- lapply(seq_len(nrow(vars_with_missing)), function(i) {
       var_name <- vars_with_missing$Variable[i]
       textInput(
@@ -681,7 +689,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$impute, {
     req(dataset())
-    data <- dataset()
+    data <- get_current_dataset()
     summary <- missing_summary()
     vars_with_missing <- summary %>% filter(MissingValues > 0)
     
@@ -693,16 +701,16 @@ server <- function(input, output, session) {
       if (!is.null(impute_method)) {
         if (impute_method == "Mode") {
           mode_val <- names(which.max(table(data[[var_name]])))
-          data[[var_name]][is.na(data[[var_name]])] <- mode_val
+          data[[var_name]][is.na(data[[var_name]]) | data[[var_name]] == ""] <- mode_val
         } else if (impute_method == "Replace with 'Unknown'") {
-          data[[var_name]][is.na(data[[var_name]])] <- "Unknown"
+          data[[var_name]][is.na(data[[var_name]]) | data[[var_name]] == ""] <- "Unknown"
         } else if (impute_method == "Mean") {
-          data[[var_name]][is.na(data[[var_name]])] <- mean(data[[var_name]], na.rm = TRUE)
+          data[[var_name]][is.na(data[[var_name]]) | data[[var_name]] == ""] <- mean(data[[var_name]], na.rm = TRUE)
         } else if (impute_method == "Median") {
-          data[[var_name]][is.na(data[[var_name]])] <- median(data[[var_name]], na.rm = TRUE)
+          data[[var_name]][is.na(data[[var_name]]) | data[[var_name]] == ""] <- median(data[[var_name]], na.rm = TRUE)
         } else if (impute_method == "Custom Value") {
           custom_val <- input[[paste0("custom_", var_name)]]
-          data[[var_name]][is.na(data[[var_name]])] <- custom_val
+          data[[var_name]][is.na(data[[var_name]]) | data[[var_name]] == ""] <- custom_val
         }
       }
     }
