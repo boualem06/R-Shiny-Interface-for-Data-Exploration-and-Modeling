@@ -67,7 +67,8 @@ ui <- dashboardPage(
                 valueBoxOutput("numericalBox", width = 3)
               ),
               fluidRow(
-                valueBoxOutput("missingBox", width = 3)
+                valueBoxOutput("missingBox", width = 3),
+                valueBoxOutput("outliersBox", width = 3)
               ),
               fluidRow(
                 valueBoxOutput("searchBox", width = 12)
@@ -75,6 +76,7 @@ ui <- dashboardPage(
               fluidRow(
                 valueBoxOutput("imputationBox", width = 12)
               ),
+             
          ),
       
       #tabItem(tabName = "impute",
@@ -131,7 +133,8 @@ ui <- dashboardPage(
                     selectInput("plot_type", "Select Plot Type:", 
                                 choices = c("Scatter Plot" = "scatter", 
                                             "Bar Plot" = "bar", 
-                                            "Histogram" = "hist")),
+                                            "Histogram" = "hist",
+                                            "Box Plot" = "box")),
                     actionButton("generate_plot", "Generate Plot", class = "btn-success")
                 )
               ),
@@ -389,6 +392,8 @@ server <- function(input, output, session) {
   })
   
   
+  
+  
   output$rowsBox <- renderValueBox({
     req(dataset())
     valueBox(
@@ -429,6 +434,31 @@ server <- function(input, output, session) {
     valueBox(
       num_missing, "Missing Values",
       icon = icon("exclamation-circle"), color = "red"
+    )
+  })
+  
+  output$outliersBox <- renderValueBox({
+    req(dataset())
+    data <- dataset()
+    
+    # Identify outliers for numerical columns
+    is_outlier <- function(x) {
+      if (is.numeric(x)) {
+        Q1 <- quantile(x, 0.25, na.rm = TRUE)
+        Q3 <- quantile(x, 0.75, na.rm = TRUE)
+        IQR <- Q3 - Q1
+        sum(x < (Q1 - 1.5 * IQR) | x > (Q3 + 1.5 * IQR), na.rm = TRUE)
+      } else {
+        0
+      }
+    }
+    
+    # Total outliers in all numerical columns
+    num_outliers <- sum(sapply(data, is_outlier))
+    
+    valueBox(
+      num_outliers, "Number of Outliers",
+      icon = icon("exclamation-triangle"), color = "yellow"
     )
   })
   
@@ -477,6 +507,13 @@ server <- function(input, output, session) {
       ggplot(data, aes_string(x = var_x)) +
         geom_histogram(binwidth = 30, fill = "blue", color = "white") +
         theme_minimal()
+    }else if (plot_type == "box") {
+      req(input$var_y) # Y-axis is required for box plot
+      ggplot(data, aes_string(x = var_x, y = var_y)) +
+        geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) + # Rotates x-axis labels
+        labs(title = "Box Plot", x = var_x, y = var_y) # Adds custom labels and title
     }
   })
   
