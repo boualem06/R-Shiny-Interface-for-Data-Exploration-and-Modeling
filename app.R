@@ -248,7 +248,8 @@ ui <- dashboardPage(
                               choices = c(
                                 "Random Forest" = "rf",
                                 "Support Vector Machine" = "svm",
-                                "Logistic Regression" = "glm"
+                                "Logistic Regression" = "glm",
+                                "Linear Regression" = "lm"
                               )
                   )
                 ),
@@ -808,6 +809,9 @@ server <- function(input, output, session) {
              "glm" = {
                # No additional parameters for logistic regression
                tags$p("No additional parameters required")
+             },
+             "lm" = {
+               tags$p("No additional parameters required") # Add this for Linear Regression
              }
       )
     }, error = function(e) {
@@ -886,6 +890,15 @@ server <- function(input, output, session) {
                           cat("Error in the gml function : ", e$message, "\n")
                         })
                         
+                      },
+                      "lm" = {
+                        dtt <- data.frame(x_train, target = y_train)
+                        colnames(dtt)[ncol(dtt)] <- input$target_var
+                        if (ncol(dtt) == 2) colnames(dtt)[1] <- input$train_vars
+                        lm(
+                          formula = as.formula(paste(input$target_var, "~", paste(input$train_vars, collapse = " + "))),
+                          data = dtt
+                        )
                       }
       )
     }, error = function(e) {
@@ -911,21 +924,37 @@ server <- function(input, output, session) {
       # Predict and evaluate
       
       predictions <- predict(model, x_test)
-      predicted_classes <- ifelse(predictions > 0.5, 1, 0)
       
-      
-      # Evaluate the model
-      confusion_matrix <- table(Predicted = predicted_classes, Actual = y_test)
-      cat("Confusion Matrix: \n")
-      print(confusion_matrix)
-      
-      # Calculate accuracy
-      accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
-      cat("Accuracy:", accuracy, "\n")
-      
-      
-      cat("Model: ", input$model_type, "\n")
-      print(postResample(predicted_classes, y_test))
+      if (input$model_type %in% c("rf", "svm", "glm")) {
+        predicted_classes <- ifelse(predictions > 0.5, 1, 0)
+        confusion_matrix <- table(Predicted = predicted_classes, Actual = y_test)
+        cat("Confusion Matrix: \n")
+        print(confusion_matrix)
+        accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+        cat("Accuracy:", accuracy, "\n")
+      } else if (input$model_type == "lm") {
+        # For Linear Regression, use RMSE or R-squared for evaluation
+        rmse <- sqrt(mean((y_test - predictions)^2))
+        r_squared <- 1 - (sum((y_test - predictions)^2) / sum((y_test - mean(y_test))^2))
+        cat("RMSE:", rmse, "\n")
+        cat("R-squared:", r_squared, "\n")
+      }
+      # 
+      # predicted_classes <- ifelse(predictions > 0.5, 1, 0)
+      # 
+      # 
+      # # Evaluate the model
+      # confusion_matrix <- table(Predicted = predicted_classes, Actual = y_test)
+      # cat("Confusion Matrix: \n")
+      # print(confusion_matrix)
+      # 
+      # # Calculate accuracy
+      # accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+      # cat("Accuracy:", accuracy, "\n")
+      # 
+      # 
+      # cat("Model: ", input$model_type, "\n")
+      # print(postResample(predicted_classes, y_test))
       
     }, error = function(e) {
       cat("Error in the saving model : ", e$message, "\n")
@@ -950,6 +979,37 @@ server <- function(input, output, session) {
     # Prepare data
     x <- df[, x_vars]
     y <- df[[target_var]]
+    
+    
+    
+    
+    
+    # For Linear Regression
+    if (input$model_type == "lm") {
+      # Extract target and predictor variables
+      target_var <- input$target_var
+      predictor <- input$train_vars[1]
+      model <- trained_model()
+      # Subset the dataset to include only the predictor and target variable
+      plot_data <- df[, c(predictor, target_var)]
+      colnames(plot_data) <- c("x", "y")
+      
+      # Create scatter plot of data
+      plot(
+        plot_data$x, plot_data$y,
+        xlab = predictor, ylab = target_var,
+        main = "Linear Regression: Scatter Plot with Regression Line",
+        pch = 19, col = "blue"
+      )
+      
+      # Add the regression line
+      abline(model, col = "red", lwd = 2)
+      
+      legend("topright", legend = c("Data Points", "Regression Line"), 
+             col = c("blue", "red"), pch = c(19, NA), lty = c(NA, 1))
+    }
+    
+    
     
     # Create visualization based on model type
     if(input$model_type == "glm") {
