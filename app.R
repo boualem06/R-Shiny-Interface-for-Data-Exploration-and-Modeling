@@ -12,6 +12,7 @@ library(e1071)
 library(glmnet)
 library(corrplot)
 library(GGally)
+library(pROC)
 
 #install.packages("ggplot2")
 
@@ -334,7 +335,13 @@ ui <- dashboardPage(
                   verbatimTextOutput("model_results")
                 )
               ),
-              fluidRow(textOutput("result"))
+              fluidRow(textOutput("result")),
+              fluidRow( # ROC curve plot
+                plotOutput("roc_plot", height = "500px"),
+                
+                # Confusion matrix
+                h4("Confusion Matrix"),
+                verbatimTextOutput("conf_matrix"))
       ),
       #=============================================Model viusalization===================================================================
       # Model Visualization Tab
@@ -480,38 +487,6 @@ server <- function(input, output, session) {
   })
 
   
-  # test<- reactive({
-  #   req(get_current_dataset())
-  #   tryCatch({
-  # 
-  #     # Set default target as the last column
-  #     default_target <- names(get)[ncol(get_current_dataset())] # Last column name
-  #     
-  #     # Update variable selection inputs
-  #     updateSelectInput(session, "target_var", 
-  #                       choices = names(get_current_dataset()), 
-  #                       selected = default_target
-  #     ) 
-  #     
-  #     updateSelectInput(session, "train_vars", 
-  #                       choices = names(get_current_dataset()), 
-  #                       selected=head(names(get_current_dataset()), -1)
-  #                       
-  #     )
-  #     
-  #     #return NULL"
-  #     
-  #   }, error = function(e) {
-  #     showModal(modalDialog(
-  #       title = "Error",
-  #       "erreeurururururur ===================",
-  #       
-  #       easyClose = TRUE
-  #     ))
-  #     NULL
-  #   })
-  # })
-  # 
   
   output$rowsBox <- renderValueBox({
     req(dataset())
@@ -1097,13 +1072,6 @@ server <- function(input, output, session) {
     # Calculate missing values and determine variable types
     missing_data <- data.frame(
       Variable = names(data),
-      # MissingValues = sapply(data, function(col) {
-      #   if (is.character(col) | is.factor(col)) {
-      #     sum(is.na(col) | nchar(as.character(col)) == 0)
-      #   } else {
-      #     sum(is.na(col))
-      #   }
-      # }),
       MissingValues=sapply(data, function(x) sum(is.na(x) | x == "")),
       Type = sapply(data, class),
       stringsAsFactors = FALSE
@@ -1450,6 +1418,7 @@ server <- function(input, output, session) {
     tryCatch({
       # Check if model training was successful
       if (is.null(model)) {
+        
         stop("Model training failed. Please check your data and model parameters.")
       }
       
@@ -1459,6 +1428,42 @@ server <- function(input, output, session) {
       predictions <- predict(model, x_test)
       
       if (input$model_type %in% c("rf", "svm", "glm")) {
+        roc_obj <- roc(y_test, predictions)
+        
+        #====================================Roc curve==========================================
+        output$roc_plot <- renderPlot({
+          req(model)
+          
+          # roc_obj <- model_results()$roc
+          roc_data <- data.frame(
+            FPR = 1 - roc_obj$specificities,
+            TPR = roc_obj$sensitivities
+          )
+          
+          ggplot(roc_data, aes(x = FPR, y = TPR)) +
+            geom_line(color = "#2C3E50", size = 1.2) +
+            geom_abline(intercept = 0, slope = 1, 
+                        linetype = "dashed", color = "gray50") +
+            annotate("text", x = 0.7, y = 0.3, 
+                     label = paste("AUC =", round(auc(roc_obj), 3)), 
+                     size = 5, color = "#2C3E50") +
+            labs(
+              title = "ROC Curve",
+              x = "False Positive Rate (1 - Specificity)",
+              y = "True Positive Rate (Sensitivity)"
+            ) +
+            theme_minimal() +
+            theme(
+              plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+              axis.title = element_text(size = 12),
+              axis.text = element_text(size = 10),
+              panel.grid.minor = element_blank()
+            ) +
+            coord_equal()
+        })
+        #=========================================================================
+        
+        
         predicted_classes <- ifelse(predictions > 0.5, 1, 0)
         confusion_matrix <- table(Predicted = predicted_classes, Actual = y_test)
         cat("Confusion Matrix: \n")
