@@ -39,15 +39,7 @@ ui <- dashboardPage(
     )
   ),
   dashboardBody(
-    #fluidRow(
-     # column(
-      #  width = 12,
-       # actionButton("btn_impute", "Go to Impute", class = "btn-primary"),
-        #actionButton("btn_dataset_show", "Go to Dataset Show", class = "btn-info"),
-        #actionButton("btn_dataset_preview", "Go to Dataset Preview", class = "btn-success"),
-        #br(), br()
-      #)
-    #),
+    
     
     tabItems(
       tabItem(tabName = "upload",
@@ -81,22 +73,7 @@ ui <- dashboardPage(
               ),
              
          ),
-      
-      #tabItem(tabName = "impute",
-              #h3("Impute Section"),
-              
-       #      fluidRow(
-        #        box(title = "Imputation Options", status = "warning", solidHeader = TRUE, width = 12,
-         #           uiOutput("imputationUI"),
-          #          actionButton("impute", "Apply Imputation", class = "btn-primary")
-           #     )
-            #  ),
-             # fluidRow(
-              #  box(title = "Download Imputed Dataset", status = "success", solidHeader = TRUE, width = 12,
-               #     downloadButton("downloadData", "Download Imputed Dataset")
-                #)
-              #),
-      #),
+    
       
       tabItem(tabName = "dataset_show",
               
@@ -209,11 +186,7 @@ ui <- dashboardPage(
                     actionButton("impute", "Apply Imputation", class = "btn-primary")
                 )
               ),
-              #fluidRow(
-              #  box(title = "Download Imputed Dataset", status = "success", solidHeader = TRUE, width = 12,
-               #     downloadButton("downloadData", "Download Imputed Dataset")
-              #  )
-              #),
+             
               
               
               fluidRow(
@@ -441,6 +414,7 @@ server <- function(input, output, session) {
                         #selected =NULL
       )
       
+
       return(data)
       
     }, error = function(e) {
@@ -484,6 +458,15 @@ server <- function(input, output, session) {
 
       print("Dataset has changed. Updating related variables.")
     }
+  })
+  
+  observe({
+    req(dataset())
+    preprocessed_data$imputed <- NULL
+    preprocessed_data$normalized <- NULL
+    preprocessed_data$outlier_treated <- NULL
+    preprocessed_data$encoded <- NULL
+  
   })
 
   
@@ -1083,20 +1066,23 @@ server <- function(input, output, session) {
   imputed_dataset <- reactiveVal(NULL)
   
   
-  # UI for imputation
   output$imputationUI <- renderUI({
     req(missing_summary())
     summary <- missing_summary()
     vars_with_missing <- summary %>% filter(MissingValues > 0)
+    
     if (nrow(vars_with_missing) == 0) {
       return(h4("No missing values to impute!"))
     }
     
-    impute_controls <- lapply(seq_len(nrow(vars_with_missing)), function(i) {
+    all_inputs <- list()
+    
+    # Remove the lapply and use a regular for loop
+    for(i in seq_len(nrow(vars_with_missing))) {
       var_name <- vars_with_missing$Variable[i]
       var_type <- vars_with_missing$Type[i]
       
-      selectInput(
+      method_input <- selectInput(
         inputId = paste0("impute_", var_name),
         label = paste("Imputation method for", var_name),
         choices = if (var_type %in% c("factor", "character")) {
@@ -1105,21 +1091,25 @@ server <- function(input, output, session) {
           c("Mean", "Median", "Custom Value")
         }
       )
-    })
-    
-    
-    custom_value_input <- lapply(seq_len(nrow(vars_with_missing)), function(i) {
-      var_name <- vars_with_missing$Variable[i]
-      textInput(
-        inputId = paste0("custom_", var_name),
-        label = paste("Custom Value for", var_name),
-        value = "",
-        placeholder = "Enter a custom value"
+      
+      custom_input <- conditionalPanel(
+        condition = sprintf("input['impute_%s'] == 'Custom Value'", var_name),
+        textInput(
+          inputId = paste0("custom_", var_name),
+          label = paste("Custom Value for", var_name),
+          value = "",
+          placeholder = "Enter a custom value"
+        )
       )
-    })
+      
+      all_inputs[[length(all_inputs) + 1]] <- method_input
+      all_inputs[[length(all_inputs) + 1]] <- custom_input
+    }
     
-    tagList(impute_controls, custom_value_input)
+    # Return the tagList directly
+    tagList(all_inputs)
   })
+  
   
   observeEvent(input$impute, {
     req(dataset())
@@ -1402,10 +1392,11 @@ server <- function(input, output, session) {
       )
     }, error = function(e) {
       print("====================================")
+      
       showModal(
         modalDialog(
           title = "Alert",
-          "Please select the model first",
+          "--> Please select the model first and if there is null values please impute them ",
           easyClose = TRUE,
           footer = modalButton("Close")
         )
@@ -1646,7 +1637,6 @@ server <- function(input, output, session) {
       theme_bw()
   })
   #===========================================================================================================================
-  
   
   }
 
