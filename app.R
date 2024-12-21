@@ -1088,7 +1088,7 @@ server <- function(input, output, session) {
         inputId = paste0("impute_", var_name),
         label = paste("Imputation method for", var_name),
         choices = if (var_type %in% c("factor", "character")) {
-          c("Custom Value", "Replace with 'Unknown'")
+          c("Mode","Custom Value", "Replace with 'Unknown'")
         } else {
           c("Mean", "Median", "Custom Value")
         }
