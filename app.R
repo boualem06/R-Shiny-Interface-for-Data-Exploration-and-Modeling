@@ -26,6 +26,8 @@ ui <- dashboardPage(
       menuItem("Dataset Preview", tabName = "dataset_preview", icon = icon("search")),
       # menuItem("Impute", tabName = "impute", icon = icon("calculator")),
       menuItem("Visualisation", tabName = "visualisation", icon = icon("chart-bar")), # New Visualisation menu
+      menuItem("Univariate Analysis", tabName = "univariate", icon = icon("chart-bar")),
+      menuItem("Bivariate Analysis", tabName = "Bivariate", icon = icon("chart-bar")),
       menuItem("Correlation Analysis", tabName = "correlation", icon = icon("chart-line")),
       menuItem("Preprocessing", tabName = "preprocessing", icon = icon("filter")),
       menuItem("Model Selection", tabName = "model", icon = icon("chart-bar")),
@@ -142,6 +144,58 @@ ui <- dashboardPage(
                 box(title = "Plot Output", status = "info", solidHeader = TRUE, width = 12,
                     plotOutput("plot")
                 )
+              )
+      ),
+      
+      tabItem(tabName = "univariate",
+              
+              fluidRow(
+                
+                box(title = "Univariate Analysis", status = "primary", solidHeader = TRUE, width = 12,
+                    
+                    selectInput("data_type_uni", "Data Type:", choices = c("Categorical", "Numerical")),
+                    
+                    selectInput("univariate_variable", "Select Variable:", choices = NULL),
+                    
+                    uiOutput("univariate_plots")  # Dynamically render plots
+                    
+                )
+              )
+        ),
+      
+      tabItem(tabName = "Bivariate",
+              
+              fluidRow(
+                
+                box(title = "Bivariate Analysis", status = "primary", solidHeader = TRUE, width = 12,
+                    
+                    selectInput("data_type", "Data Type:", choices = c("Categorical vs Categorical", "Numerical vs Numerical", "Categorical vs Numerical")),
+                    
+                    selectInput("bivar_var1", "Select Variable 1:", choices = NULL),
+                    
+                    selectInput("bivar_var2", "Select Variable 2:", choices = NULL),
+                    
+                    uiOutput("bivariate_plots"),  # Dynamically render plots
+                    
+                    
+                    conditionalPanel(       # Wrap force table in conditionalPanel
+                      
+                      condition = "input.data_type == 'Categorical vs Categorical'",
+                      
+                      tableOutput("force")
+                      
+                    ),
+                  
+                    conditionalPanel(       # Wrap contingency table in conditionalPanel
+                      
+                      condition = "input.data_type == 'Categorical vs Categorical'",
+                      
+                      tableOutput("contingency")
+                      
+                    )
+                    
+                )
+                
               )
       ),
       #=========================================page for  data processing ==========================================
@@ -279,7 +333,8 @@ ui <- dashboardPage(
                   title = "Training Results", status = "warning", solidHeader = TRUE,
                   verbatimTextOutput("model_results")
                 )
-              )
+              ),
+              fluidRow(textOutput("result"))
       ),
       #=============================================Model viusalization===================================================================
       # Model Visualization Tab
@@ -393,6 +448,70 @@ server <- function(input, output, session) {
   
   
   
+  
+  observe({
+    req(get_current_dataset())
+    # Get the current dataset
+    current_dataset <- get_current_dataset()
+
+    # Trigger actions or modify other variables when the dataset changes
+    if (!is.null(current_dataset)) {
+      # Example actions you might want to take
+      default_target <- names(current_dataset)[ncol(current_dataset)] # Last column name
+      
+      # Update input variables based on the new dataset
+      updateSelectInput(session, "target_var",
+                        choices = names(current_dataset),
+                        #selected = default_target
+                        selected = default_target
+
+      )
+
+      updateSelectInput(session, "train_vars",
+                        choices = names(current_dataset),
+                        #selected=head(names(current_dataset), -1)
+                        selected=head(names(current_dataset), -1)
+                        #selected =NULL
+      )
+
+
+      print("Dataset has changed. Updating related variables.")
+    }
+  })
+
+  
+  # test<- reactive({
+  #   req(get_current_dataset())
+  #   tryCatch({
+  # 
+  #     # Set default target as the last column
+  #     default_target <- names(get)[ncol(get_current_dataset())] # Last column name
+  #     
+  #     # Update variable selection inputs
+  #     updateSelectInput(session, "target_var", 
+  #                       choices = names(get_current_dataset()), 
+  #                       selected = default_target
+  #     ) 
+  #     
+  #     updateSelectInput(session, "train_vars", 
+  #                       choices = names(get_current_dataset()), 
+  #                       selected=head(names(get_current_dataset()), -1)
+  #                       
+  #     )
+  #     
+  #     #return NULL"
+  #     
+  #   }, error = function(e) {
+  #     showModal(modalDialog(
+  #       title = "Error",
+  #       "erreeurururururur ===================",
+  #       
+  #       easyClose = TRUE
+  #     ))
+  #     NULL
+  #   })
+  # })
+  # 
   
   output$rowsBox <- renderValueBox({
     req(dataset())
@@ -523,6 +642,353 @@ server <- function(input, output, session) {
   })
   
   
+  
+  ################Univariate Analysis#######################
+  
+  # Update univariate variable selection
+  
+  # Update variable selections based on data type
+  
+  observeEvent(input$data_type_uni, {
+    
+    req(get_current_dataset())
+    
+    data <- get_current_dataset()
+    
+    if (input$data_type_uni == "Categorical") {
+      
+      cols <- names(data)[sapply(data, function(x) is.factor(x) || is.character(x))]
+      
+    } else {  # Numerical
+      
+      cols <- names(data)[sapply(data, is.numeric)]
+      
+    }
+    
+    updateSelectInput(session, "univariate_variable", choices = cols)
+    
+  })
+  
+  
+  
+  # Dynamically render plots based on data type
+  
+  output$univariate_plots <- renderUI({
+    
+    req(input$data_type_uni, get_current_dataset(), input$univariate_variable)
+    
+    if (input$data_type_uni == "Numerical") {
+      
+      tagList(
+      
+        plotOutput("effectifsDiag"),
+      
+        plotOutput("effectifsCumDiag"),
+      
+        plotOutput("boiteMoustaches")
+      )
+      
+    } else {  # Categorical
+      tagList(
+        plotOutput("secteurs"),
+        
+        plotOutput("barre")
+      )
+      
+    }
+    
+  })
+  
+
+  
+  # Univariate Plots Numerical
+  
+  output$effectifsDiag <- renderPlot({
+    
+    req(get_current_dataset(), input$univariate_variable)
+    
+    selected_var <- get_current_dataset()[[input$univariate_variable]]
+    
+    plot(table(selected_var), col ="green4", xlab = input$univariate_variable,
+         
+         ylab ="Effectifs", main = paste("Distribution of", input$univariate_variable))
+    
+  })
+  
+  
+  
+  output$effectifsCumDiag <- renderPlot({
+    
+    req(get_current_dataset(), input$univariate_variable)
+    
+    selected_var <- get_current_dataset()[[input$univariate_variable]]
+    
+    plot(ecdf(as.numeric(as.character(selected_var))),
+         
+         col ="green4", xlab = input$univariate_variable,
+         
+         ylab ="Cumulative Frequencies", main = paste("Cumulative Frequencies of", input$univariate_variable))
+    
+  })
+  
+  
+  
+  output$boiteMoustaches <- renderPlot({
+    
+    req(get_current_dataset(), input$univariate_variable)
+    selected_var <- get_current_dataset()[[input$univariate_variable]]
+    
+    boxplot(selected_var, col = grey(0.8),
+            
+            main = paste("Boxplot of", input$univariate_variable),
+            
+            ylab = input$univariate_variable, las = 1)
+    
+    rug(selected_var, side = 2)
+    
+  })
+  
+  
+  
+  # Univariate Plot Categorical
+  
+  # Diagramme en secteurs
+  output$secteurs <- renderPlot({
+    
+    req(get_current_dataset(), input$univariate_variable)
+    data <- get_current_dataset()
+    selected_var <- data[[input$univariate_variable]]
+    
+    effectifs <- table(selected_var)
+    
+    pie(effectifs, labels = substr(names(effectifs), 1, 20), 
+        main = input$univariate_variable, col=c())
+  })
+ 
+  
+  output$barre <- renderPlot({
+    
+    req(get_current_dataset(), input$univariate_variable)
+    data <- get_current_dataset()
+    
+    ggplot(data, aes_string(x=input$univariate_variable)) + geom_bar()
+ })
+  
+  ####################################Bivariate########################
+  
+  
+   # Update variable selections based on data type
+
+  observeEvent(input$data_type, {
+
+    req(get_current_dataset())
+
+    data <- get_current_dataset()
+
+    if (input$data_type == "Categorical vs Categorical") {
+
+      cols1 <- names(data)[sapply(data, function(x) is.factor(x) || is.character(x))]
+      cols2 <- names(data)[sapply(data, function(x) is.factor(x) || is.character(x))]
+
+    } else if (input$data_type == "Numerical vs Numerical") {  
+
+      cols1 <- names(data)[sapply(data, is.numeric)]
+      cols2 <- names(data)[sapply(data, is.numeric)]
+
+    } else {    #Categorical vs Numerical
+      
+      cols1 <- names(data)[sapply(data, function(x) is.factor(x) || is.character(x))]
+      cols2 <- names(data)[sapply(data, is.numeric)]
+      
+    }
+
+    updateSelectInput(session, "bivar_var1", choices = cols1)
+
+    updateSelectInput(session, "bivar_var2", choices = cols2)
+
+  })
+  
+  # Dynamically render plots based on data type
+  
+  output$bivariate_plots <- renderUI({
+    
+    req(input$data_type, get_current_dataset(), input$bivar_var1, input$bivar_var2)
+    
+    if (input$data_type == "Categorical vs Categorical") {
+        
+        plotOutput("barplotDodgeBi")
+
+      
+    } else if (input$data_type == "Numerical vs Numerical") {  
+      
+      tagList(
+        
+        plotOutput("scatterplot"),
+        
+        plotOutput("boxplot_comparison")
+      )
+      
+    } else {   # Categorical vs Numerical
+      tagList(
+        plotOutput("boxplotmultimodal"),
+        textOutput("correlation_multimodal")
+      )
+    }
+    
+  })
+  
+  
+  ###Categorical Plots
+
+  output$barplotDodgeBi <- renderPlot({
+    
+    req(get_current_dataset(), input$bivar_var1, input$bivar_var2)
+    
+    data <- get_current_dataset()
+    
+    ggplot(data, aes_string(x = input$bivar_var1, fill = input$bivar_var2)) +
+      
+      geom_bar(position = "dodge")+
+      
+      labs(title = paste("Grouped Barplot of", input$bivar_var1, "by", input$bivar_var2),
+           
+           x = input$bivar_var1, fill = input$bivar_var2)
+    
+  })
+  
+  
+  
+  output$contingency <- renderTable({
+    
+    req(get_current_dataset(), input$bivar_var1, input$bivar_var2)
+    
+    data <- get_current_dataset()
+    
+    with(data, table(get(input$bivar_var2), get(input$bivar_var1))) # Use column names dynamically
+    
+  })
+  
+  
+  
+  output$force <- renderTable({
+    
+    req(get_current_dataset(), input$bivar_var1, input$bivar_var2)
+    
+    data <- get_current_dataset()
+    
+    
+    
+    force.df <- as.data.frame(matrix(NA, nrow = 3, ncol = 1))
+    
+    rownames(force.df) = c("X2", "Phi2", "Cramer")
+    
+    
+    
+    tab = with(data, table(get(input$bivar_var2), get(input$bivar_var1)))
+    
+    # La table de contigence s'il y a indépendence
+    tab.indep = tab
+    n = sum(tab)
+    tab.rowSum = apply(tab, 2, sum)
+    tab.colSum = apply(tab, 1, sum)
+    
+    for(i in c(1:length(tab.colSum))){
+      for(j in c(1:length(tab.rowSum))){
+        tab.indep[i,j] = tab.colSum[i]*tab.rowSum[j]/n
+      }
+    }
+    
+    # Calcul du X²
+    force.df[1,1] = sum((tab-tab.indep)^2/tab.indep)
+    # Calcul du Phi²
+    force.df[2,1] = force.df[1,1]/n
+    # Calcul du Cramer
+    force.df[3,1] = sqrt(force.df[2,1]/(min(nrow(tab), ncol(tab))-1))
+    
+    force.df
+    
+  }, rownames = TRUE, colnames = FALSE)
+  
+  
+  
+  
+  ###########Numerical PLots
+  
+  output$scatterplot <- renderPlot({
+    
+    req(get_current_dataset(), input$bivar_var1, input$bivar_var2)
+    
+    data <- get_current_dataset()
+    
+    ggplot(data, aes_string(x = input$bivar_var1, y = input$bivar_var2)) +
+      
+      geom_point() +
+      
+      labs(title = paste("Scatterplot of", input$bivar_var1, "vs.", input$bivar_var2),
+           
+           x = input$bivar_var1, y = input$bivar_var2)
+    
+  })
+  
+  output$boxplot_comparison <- renderPlot({
+    
+    req(get_current_dataset(), input$bivar_var1, input$bivar_var2)
+    
+    data <- get_current_dataset()
+    
+    ggplot(data, aes_string(x = input$bivar_var2, y = input$bivar_var1, fill=input$bivar_var2)) +
+      
+      geom_boxplot()+
+      
+      labs(title = paste("Boxplot comparison of", input$bivar_var1, "by", input$bivar_var2),
+           
+           x = input$bivar_var1, y = input$bivar_var2)
+    
+  })
+  
+  #####Categorical vs Numericals
+  
+  output$boxplotmultimodal <- renderPlot({
+    
+    req(get_current_dataset(), input$bivar_var1, input$bivar_var2)
+    data <- get_current_dataset()
+    
+    ggplot(data, aes(x=data[[input$bivar_var1]], y=data[[input$bivar_var2]], fill=data[[input$bivar_var1]])) + 
+      geom_boxplot(alpha=0.3) + xlab(input$bivar_var1) + ylab(input$bivar_var2) +
+      theme(legend.position="none")
+  })
+  
+  
+  
+  output$correlation_multimodal <- renderText({
+    req(get_current_dataset(), input$bivar_var1, input$bivar_var2)
+    data <- get_current_dataset()
+    quali_var = data[[input$bivar_var1]]
+    quanti_var = data[[input$bivar_var2]]
+    
+    # Initialisation de la somme
+    somme <- 0
+    # Calcul du rapport de corrélation pour var1 et var2
+    for (facteur in unique(quali_var)) {
+      # Trouver les indices des éléments correspondant à ce facteur
+      ind <- which(quali_var == facteur)
+
+      # Extraire les valeurs de y (var2) correspondant à ces indices
+      classe <- quanti_var[ind]
+      
+      # Calcul de la somme de la variance entre la classe et la moyenne de y
+      somme <- somme + length(classe) * (mean(classe) - mean(quanti_var))^2
+    }
+    # Calcul de la somme des carrés totaux pour y (var2)
+    y_ecart <- sum((quanti_var - mean(quanti_var))^2)
+    
+    # Calcul du rapport de corrélation
+    rc_var1 <- somme / y_ecart
+    
+    # Affichage du rapport de corrélation pour var1
+    print(c("Rapport de corrélation :",round(rc_var1,4)))
+    
+  })
   #======================= Data show section =============================================
   
   # Data loading and preview (first 5 rows initially)
@@ -897,7 +1363,10 @@ server <- function(input, output, session) {
       cat("Error: ", e$message, "\n")
     })
     
+    
+    
     tryCatch({
+      
       model <- switch(input$model_type,
                       
                       "rf" = {
@@ -908,14 +1377,33 @@ server <- function(input, output, session) {
                         )
                       },
                       "svm" = {
-                        svm(
-                          x = x_train,
-                          #y = as.factor(y_train),
-                          y = y_train,
-                          kernel = input$svm_kernel,
-                          cost = input$svm_cost
-                        )
+                        data_svm <- get_current_dataset()
+                        categorical_columns <- sapply(data_svm, function(col) is.character(col) || is.logical(col))
+                        data_svm[categorical_columns] <- lapply(data_svm[categorical_columns], as.factor)
+                        
+                        selected_columns <- input$train_vars
+                        X <- data_svm[, selected_columns]  # Use only the selected columns for features
+                        Y <- data_svm[, input$target_var]  # Target column
+                        
+                        set.seed(123)  # For reproducibility
+                        train_indices <- createDataPartition(Y, p = input$train_ratio, list = FALSE)
+                        
+                        x_train <- X[train_indices, ]
+                        y_train <- Y[train_indices]
+                        x_test <- X[-train_indices, ]
+                        y_test <- Y[-train_indices]
+                        target_col<-input$target_var
+                        
+                        
+                        train_data <- cbind(x_train, target_col = y_train)
+                        svm(target_col ~ ., data = train_data,
+                                         kernel = "linear", 
+                                         cost = 1
+                                         )
                       },
+                      
+                      
+                      
                       "glm" = {
                         tryCatch({
                           dtt<-data.frame(x_train, target = y_train)
@@ -924,12 +1412,8 @@ server <- function(input, output, session) {
                           glm(
                             
                             formula <- as.formula(paste(input$target_var,"~", paste(input$train_vars, collapse = " + "))),
-                            
-                            # formula = as.formula(paste(input$target_var, "~ .")),
-                            #data = data.frame(x_train, target = y_train),
                             data<-dtt,
                             family = binomial
-                            # ifelse(length(unique(y_train)) <= 2, binomial(), gaussian())
                           )
                         },error = function(e) {
                           cat("Error in the gml function : ", e$message, "\n")
@@ -945,9 +1429,21 @@ server <- function(input, output, session) {
                           data = dtt
                         )
                       }
+                      
+                      
       )
     }, error = function(e) {
-      cat("Error in the model training: ", e$message, "\n")
+      print("====================================")
+      showModal(
+        modalDialog(
+          title = "Alert",
+          "Please select the model first",
+          easyClose = TRUE,
+          footer = modalButton("Close")
+        )
+      )
+      print("====================================")
+      cat("please select a model first ", , "\n")
     })
     # Train model
     
@@ -960,14 +1456,6 @@ server <- function(input, output, session) {
       
       # Save trained model
       trained_model(model)
-      #try({
-      # if(ncol(x_test) == 1) colnames(x_test)[1] <- input$train_vars
-      
-      #}, error = function(e) {
-      #cat("Error in the saving m*******************odel : ", e$message, "\n")
-      #})
-      # Predict and evaluate
-      
       predictions <- predict(model, x_test)
       
       if (input$model_type %in% c("rf", "svm", "glm")) {
@@ -984,22 +1472,7 @@ server <- function(input, output, session) {
         cat("RMSE:", rmse, "\n")
         cat("R-squared:", r_squared, "\n")
       }
-      # 
-      # predicted_classes <- ifelse(predictions > 0.5, 1, 0)
-      # 
-      # 
-      # # Evaluate the model
-      # confusion_matrix <- table(Predicted = predicted_classes, Actual = y_test)
-      # cat("Confusion Matrix: \n")
-      # print(confusion_matrix)
-      # 
-      # # Calculate accuracy
-      # accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
-      # cat("Accuracy:", accuracy, "\n")
-      # 
-      # 
-      # cat("Model: ", input$model_type, "\n")
-      # print(postResample(predicted_classes, y_test))
+  
       
     }, error = function(e) {
       cat("Error in the saving model : ", e$message, "\n")
