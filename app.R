@@ -26,7 +26,7 @@ ui <- dashboardPage(
       menuItem("Dataset Show", tabName = "dataset_show", icon = icon("table")),
       menuItem("Dataset Preview", tabName = "dataset_preview", icon = icon("search")),
       # menuItem("Impute", tabName = "impute", icon = icon("calculator")),
-      menuItem("Visualisation", tabName = "visualisation", icon = icon("chart-bar")), # New Visualisation menu
+      # menuItem("Visualisation", tabName = "visualisation", icon = icon("chart-bar")), # New Visualisation menu
       menuItem("Univariate Analysis", tabName = "univariate", icon = icon("chart-bar")),
       menuItem("Bivariate Analysis", tabName = "Bivariate", icon = icon("chart-bar")),
       menuItem("Correlation Analysis", tabName = "correlation", icon = icon("chart-line")),
@@ -131,7 +131,7 @@ ui <- dashboardPage(
                 
                 box(title = "Univariate Analysis", status = "primary", solidHeader = TRUE, width = 12,
                     
-                    selectInput("data_type_uni", "Data Type:", choices = c("Categorical", "Numerical")),
+                    selectInput("data_type_uni", "Data Type:", choices = c("Categorical", "Numerical"),selected ="Numerical" ),
                     
                     selectInput("univariate_variable", "Select Variable:", choices = NULL),
                     
@@ -147,7 +147,7 @@ ui <- dashboardPage(
                 
                 box(title = "Bivariate Analysis", status = "primary", solidHeader = TRUE, width = 12,
                     
-                    selectInput("data_type", "Data Type:", choices = c("Categorical vs Categorical", "Numerical vs Numerical", "Categorical vs Numerical")),
+                    selectInput("data_type", "Data Type:", choices = c("Categorical vs Categorical", "Numerical vs Numerical", "Categorical vs Numerical",selected="Numerical vs Numerical")),
                     
                     selectInput("bivar_var1", "Select Variable 1:", choices = NULL),
                     
@@ -461,11 +461,13 @@ server <- function(input, output, session) {
   })
   
   observe({
-    req(dataset())
-    preprocessed_data$imputed <- NULL
-    preprocessed_data$normalized <- NULL
-    preprocessed_data$outlier_treated <- NULL
-    preprocessed_data$encoded <- NULL
+      req(dataset())
+      preprocessed_data$imputed <- NULL
+      preprocessed_data$normalized <- NULL
+      preprocessed_data$outlier_treated <- NULL
+      preprocessed_data$encoded <- NULL
+    
+   
   
   })
 
@@ -1401,8 +1403,7 @@ server <- function(input, output, session) {
           footer = modalButton("Close")
         )
       )
-      print("====================================")
-      cat("please select a model first ", , "\n")
+     
     })
     # Train model
     
