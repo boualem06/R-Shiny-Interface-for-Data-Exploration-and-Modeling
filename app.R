@@ -18,6 +18,10 @@ library(pROC)
 
 # UI
 ui <- dashboardPage(
+
+  
+  
+  
   dashboardHeader(title = "Dataset Overview"),
   dashboardSidebar(
     sidebarMenu(
@@ -33,7 +37,9 @@ ui <- dashboardPage(
       menuItem("Preprocessing", tabName = "preprocessing", icon = icon("filter")),
       menuItem("Model Selection", tabName = "model", icon = icon("chart-bar")),
       menuItem("Model Training", tabName = "train", icon = icon("cogs")),
-      menuItem("Model Visualization", tabName = "viz", icon = icon("eye"))
+      menuItem("Model Visualization", tabName = "viz", icon = icon("eye")),
+      menuItem("étude de cas", tabName = "cas", icon = icon("search"))
+      
       
       
     )
@@ -355,8 +361,287 @@ ui <- dashboardPage(
                   plotOutput("scatter_matrix")
                 )
               )
-      )
-      # =================================================================================================
+      ),
+      # =====================================Etude de cas ============================================================
+      tabItem(tabName = "cas",
+              fluidPage(
+                tags$head(
+                  tags$style(HTML("
+      .dataset-info {
+        padding: 20px;
+        margin-bottom: 20px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+      }
+      .dataset-info h3 {
+        color: #007bff;  /* Changed to blue - you can use any color here */
+        margin-bottom: 15px;
+        font-weight: bold;
+      }
+      .dataset-info ul {
+        list-style-type: none;
+        padding-left: 0;
+      }
+      .dataset-info li {
+        margin-bottom: 10px;
+        line-height: 1.6;
+      }
+      
+      
+      .image-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      .image-container {
+        flex: 1;
+        text-align: center;
+      }
+      
+      .image-container img {
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        object-fit: contain;
+      }
+    "))
+                ),
+              
+                
+                
+                #======================================================================== 
+                
+                div(class = "dataset-info",
+                    h3("Dimensions du jeu de données, valeurs manquantes et Veleurs aberrantes"),
+                    tags$ul(
+                      tags$li(
+                        tags$strong("Dimensions"), 
+                        " : Le jeu de données contient 284 lignes et 14 colonnes, "
+                      ),
+                      tags$li(
+                        tags$strong("Valeurs manquantes"), 
+                        " : on remarque qu'il y a des valeurs manquante donc il faut dabord remplacer ces valeurs avec les differentes methodes proposé"
+                      ),
+                      tags$li(
+                        tags$strong("valeurs aberrantes"), 
+                        " : on remarque aussi qu'il y a des valeurs aberrantes  donc il faut  remplacer ces valeurs avec les differentes methodes proposé "
+                      )
+                    )
+                ),
+                
+                fluidRow(
+                  column(12,
+                         div(class = "image-grid",
+                             # Example of multiple images with captions
+                             div(class = "image-container",
+                                 tags$img(src = "1.PNG", width = 1000, height = 800),
+                                 #div(class = "caption", "Caption for image 1")
+                             )
+                         )
+                  )
+                ),
+                
+                
+                #========================================================================
+                
+                div(class = "dataset-info",
+                    h3("remplacer les valeurs null et les valeurs aberrantes"),
+                    
+                ),
+                
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "2.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "3.PNG")
+                             )
+                         )
+                  )
+                ),
+                #===============================Analyse univarié=========================================
+                div(class = "dataset-info",
+                    h3("Analyse univarié des variables "),
+                    tags$ul(
+                      tags$li(
+                        tags$strong("1/variable categorielle"), 
+                      ),)
+                    
+                ),
+                
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "4.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "6.PNG")
+                             )
+                         )
+                  )
+                ),
+                div(class = "dataset-info",
+                    #h3("Analyse univarié des variables "),
+                    tags$ul(
+                      tags$li(
+                        tags$strong("2/variable numérique"), 
+                      ),)
+                    
+                ),
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "7.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "8.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "9.PNG")
+                             ),
+                         )
+                  )
+                ),
+                
+                
+                #===============================Analyse bivarié=========================================
+                div(class = "dataset-info",
+                    h3("Analyse bivarié des variables "),
+                    tags$ul(
+                      tags$li(
+                        tags$strong("1/ variable catégorielle VS catégorielle"), 
+                      ),)
+                    
+                ),
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "10.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "11.PNG")
+                             )
+                         )
+                  )
+                ),
+                
+                div(class = "dataset-info",
+                    #h3("Analyse bivarié des variables "),
+                    tags$ul(
+                      tags$li(
+                        tags$strong("2/ variable Numérique VS Numérique"), 
+                      ),)
+                    
+                ),
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "12.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "13.PNG")
+                             )
+                         )
+                  )
+                ),
+                
+                div(class = "dataset-info",
+                    #h3("Analyse bivarié des variables "),
+                    tags$ul(
+                      tags$li(
+                        tags$strong("3/ variable Numérique VS catégorielle"), 
+                      ),)
+                    
+                ),
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "14.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "15.PNG")
+                             )
+                         )
+                  )
+                ),
+                
+                
+                # =====================================Correlation ===================================================
+                div(class = "dataset-info",
+                    h3("étude de la corrélation entre les variables numériques"),
+                    
+                ),
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "17.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "18.PNG")
+                             )
+                         )
+                  )
+                ),
+                
+                #===========================================selection du model ======================
+                div(class = "dataset-info",
+                    h3("selecion du model "),
+                    
+                ),
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "19.PNG")
+                             ),
+                             div(class = "image-container",
+                                 tags$img(src = "20.PNG")
+                             )
+                         )
+                  )
+                ),
+                
+                #===========================================selection des variables  ======================
+                
+                div(class = "dataset-info",
+                    h3("selection des variabels et training du model  "),
+                    tags$ul(
+                      tags$li(
+                        tags$strong(" d'apres la matrice de corrélation et les analyse bivarié on trouve que les variables les mieux corrélé avec la variable target sont selectionné ici"), 
+                      ),)
+                ),
+                fluidRow(
+                  column(12,
+                         div(class = "image-row",
+                             div(class = "image-container",
+                                 tags$img(src = "21.PNG")
+                             ),
+                             
+                             div(class = "image-container",
+                                 tags$img(src = "23.PNG")
+                             ),
+                         )
+                  )
+                ),
+                
+                
+                
+                
+                
+                ))
+      
+      
       
     )
   )
@@ -509,7 +794,7 @@ server <- function(input, output, session) {
   
   output$missingBox <- renderValueBox({
     req(dataset())
-    missing_values_count <- sapply(dataset(), function(x) sum(is.na(x) | x == ""))
+    missing_values_count <- sapply(get_current_dataset(), function(x) sum(is.na(x) | x == ""))
     
     # Calculate the total number of missing values
     total_missing_values <- sum(missing_values_count)
@@ -523,7 +808,7 @@ server <- function(input, output, session) {
   
   output$outliersBox <- renderValueBox({
     req(dataset())
-    data <- dataset()
+    data <- get_current_dataset()
     
     # Identify outliers for numerical columns
     is_outlier <- function(x) {
