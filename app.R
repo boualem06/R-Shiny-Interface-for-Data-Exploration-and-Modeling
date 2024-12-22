@@ -437,7 +437,7 @@ ui <- dashboardPage(
                          div(class = "image-grid",
                              # Example of multiple images with captions
                              div(class = "image-container",
-                                 tags$img(src = "1.PNG", width = 1000, height = 800),
+                                 tags$img(src = "1.png", width = 1000, height = 800),
                                  #div(class = "caption", "Caption for image 1")
                              )
                          )
@@ -456,10 +456,10 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "2.PNG")
+                                 tags$img(src = "2.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "3.PNG")
+                                 tags$img(src = "3.png")
                              )
                          )
                   )
@@ -478,10 +478,10 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "4.PNG")
+                                 tags$img(src = "4.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "6.PNG")
+                                 tags$img(src = "6.png")
                              )
                          )
                   )
@@ -498,13 +498,13 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "7.PNG")
+                                 tags$img(src = "7.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "8.PNG")
+                                 tags$img(src = "8.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "9.PNG")
+                                 tags$img(src = "9.png")
                              ),
                          )
                   )
@@ -524,10 +524,10 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "10.PNG")
+                                 tags$img(src = "10.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "11.PNG")
+                                 tags$img(src = "11.png")
                              )
                          )
                   )
@@ -545,10 +545,10 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "12.PNG")
+                                 tags$img(src = "12.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "13.PNG")
+                                 tags$img(src = "13.png")
                              )
                          )
                   )
@@ -566,10 +566,10 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "14.PNG")
+                                 tags$img(src = "14.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "15.PNG")
+                                 tags$img(src = "15.png")
                              )
                          )
                   )
@@ -585,10 +585,10 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "17.PNG")
+                                 tags$img(src = "17.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "18.PNG")
+                                 tags$img(src = "18.png")
                              )
                          )
                   )
@@ -603,10 +603,10 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "19.PNG")
+                                 tags$img(src = "19.png")
                              ),
                              div(class = "image-container",
-                                 tags$img(src = "20.PNG")
+                                 tags$img(src = "20.png")
                              )
                          )
                   )
@@ -625,19 +625,15 @@ ui <- dashboardPage(
                   column(12,
                          div(class = "image-row",
                              div(class = "image-container",
-                                 tags$img(src = "21.PNG")
+                                 tags$img(src = "21.png")
                              ),
                              
                              div(class = "image-container",
-                                 tags$img(src = "23.PNG")
+                                 tags$img(src = "23.png")
                              ),
                          )
                   )
                 ),
-                
-                
-                
-                
                 
                 ))
       
@@ -649,6 +645,8 @@ ui <- dashboardPage(
 
 # Server
 server <- function(input, output, session) {
+  
+  
   
   # Reactive data storage
   data <- reactiveVal(NULL)
@@ -698,6 +696,7 @@ server <- function(input, output, session) {
                         
                         #selected =NULL
       )
+      
       
 
       return(data)

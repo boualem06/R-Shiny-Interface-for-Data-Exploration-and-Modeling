@@ -1,0 +1,12 @@
+name: DataApp
+title: DataApp
+username: boualem
+account: boualem
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13631711
+bundleId: 9556528
+url: https://boualem.shinyapps.io/DataApp/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
