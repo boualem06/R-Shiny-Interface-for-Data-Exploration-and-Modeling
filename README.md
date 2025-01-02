@@ -86,8 +86,8 @@ Our interface provides comprehensive evaluation metrics:
 
 ## 🌐 Live Demo
 
-👉 **[Click here to explore the app!](#https://bg9dad-thomas-deshayes.shinyapps.io/CSV_Analysis/)**  
-
+👉 **[Click here to explore the app!](#)**  
+*(https://bg9dad-thomas-deshayes.shinyapps.io/CSV_Analysis/)*
 ---
 
 🎉 Thank you for exploring our R Shiny project! Feedback and contributions are always welcome. 😊
