@@ -86,8 +86,7 @@ Our interface provides comprehensive evaluation metrics:
 
 ## 🌐 Live Demo
 
-👉 **[Click here to explore the app!](#)**  
-*(https://docs.google.com/spreadsheets/d/11C6obrBgd8otSeOTTmvFBsFq1umAWNkhoiIcal9HTuY/edit?gid=0#gid=0)*
+👉 **[Click here to explore the app!](#https://bg9dad-thomas-deshayes.shinyapps.io/CSV_Analysis/)**  
 
 ---
 
